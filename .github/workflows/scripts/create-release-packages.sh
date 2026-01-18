@@ -40,7 +40,13 @@ rewrite_paths() {
 generate_commands() {
   local agent=$1 ext=$2 arg_format=$3 output_dir=$4 script_variant=$5
   mkdir -p "$output_dir"
-  for template in templates/commands/*.md; do
+  # Process command templates from both root and English subdirectory (language-specific commands)
+  # Priority: templates/commands/en/*.md (new structure), then templates/commands/*.md (legacy)
+  local template_dir="templates/commands/en"
+  if [[ ! -d "$template_dir" ]]; then
+    template_dir="templates/commands"
+  fi
+  for template in "$template_dir"/*.md; do
     [[ -f "$template" ]] || continue
     local name description script_command agent_script_command body
     name=$(basename "$template" .md)

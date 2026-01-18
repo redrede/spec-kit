@@ -230,6 +230,12 @@ AGENT_CONFIG = {
 
 SCRIPT_TYPE_CHOICES = {"sh": "POSIX Shell (bash/zsh)", "ps": "PowerShell"}
 
+# Language choices for multi-language support
+LANGUAGE_CHOICES = {
+    "en": "English (Default)",
+    "pt-BR": "Português (Brasil)",
+}
+
 CLAUDE_LOCAL_PATH = Path.home() / ".claude" / "local" / "claude"
 
 BANNER = """
@@ -421,6 +427,138 @@ def select_with_arrows(options: dict, prompt_text: str = "Select an option", def
         raise typer.Exit(1)
 
     return selected_key
+
+
+def validate_language_code(code: str) -> bool:
+    """Validate if a language code is supported.
+
+    Args:
+        code: Language code to validate (e.g., "en", "pt-BR")
+
+    Returns:
+        True if the language code is supported, False otherwise
+    """
+    return code in LANGUAGE_CHOICES
+
+
+def get_project_language(project_path: Path) -> str:
+    """Read the project language preference from configuration.
+
+    Args:
+        project_path: Path to the project root directory
+
+    Returns:
+        Language code (e.g., "en", "pt-BR"). Defaults to "en" if config
+        is missing, corrupted, or contains an unsupported language.
+    """
+    config_file = project_path / ".specify" / "config.json"
+
+    if not config_file.exists():
+        return "en"  # Default fallback
+
+    try:
+        config = json.loads(config_file.read_text())
+        language = config.get("language", "en")
+
+        # Validate the language code
+        if language not in LANGUAGE_CHOICES:
+            # Console not available here during module load, so just return default
+            return "en"
+
+        return language
+    except (json.JSONDecodeError, KeyError, IOError):
+        return "en"
+
+
+def get_template_path(template_name: str, language: str, base_path: Path = None) -> Path:
+    """Get the path to a template file for the specified language with English fallback.
+
+    Args:
+        template_name: Name of the template file (e.g., "spec-template.md")
+        language: Language code (e.g., "en", "pt-BR")
+        base_path: Base path for templates (defaults to templates/ in package)
+
+    Returns:
+        Path to the template file. Falls back to English if language-specific
+        template is not available.
+    """
+    if base_path is None:
+        base_path = Path(__file__).parent / "templates"
+
+    # Try language-specific path first
+    language_path = base_path / language / template_name
+    if language_path.exists():
+        return language_path
+
+    # Fall back to English
+    english_path = base_path / "en" / template_name
+    if english_path.exists():
+        # Warning will be shown by caller using show_template_fallback_warning
+        return english_path
+
+    # Final fallback - root templates directory (legacy)
+    root_path = base_path / template_name
+    if root_path.exists():
+        return root_path
+
+    # Return the expected language path even if it doesn't exist
+    # (let the caller handle the missing file error)
+    return language_path
+
+
+def check_template_completeness(language: str, base_path: Path = None) -> list[str]:
+    """Check which template files are missing for a language.
+
+    Args:
+        language: Language code to check (e.g., "pt-BR")
+        base_path: Base path for templates (defaults to templates/ in package)
+
+    Returns:
+        List of missing template file names for the specified language.
+        Empty list means all templates are present.
+    """
+    if base_path is None:
+        base_path = Path(__file__).parent / "templates"
+
+    # Expected template files
+    expected_templates = [
+        "spec-template.md",
+        "plan-template.md",
+        "tasks-template.md",
+        "checklist-template.md",
+        "agent-file-template.md",
+    ]
+
+    missing = []
+    language_dir = base_path / language
+
+    if not language_dir.exists():
+        return expected_templates  # All templates missing if directory doesn't exist
+
+    for template in expected_templates:
+        template_path = language_dir / template
+        if not template_path.exists():
+            missing.append(template)
+
+    return missing
+
+
+def show_template_fallback_warning(template_name: str, language: str, console_instance=None):
+    """Show a warning when falling back to English template.
+
+    Args:
+        template_name: Name of the template that was not found
+        language: The language that was requested
+        console_instance: Rich Console instance to use for output
+    """
+    if console_instance is None:
+        console_instance = Console()
+
+    language_display = LANGUAGE_CHOICES.get(language, language)
+    console_instance.print(
+        f"[yellow]⚠ Template '{template_name}' not available in {language_display}, using English[/yellow]"
+    )
+
 
 console = Console()
 
@@ -947,6 +1085,7 @@ def init(
     project_name: str = typer.Argument(None, help="Name for your new project directory (optional if using --here, or use '.' for current directory)"),
     ai_assistant: str = typer.Option(None, "--ai", help="AI assistant to use: claude, gemini, copilot, cursor-agent, qwen, opencode, codex, windsurf, kilocode, auggie, codebuddy, amp, shai, q, bob, or qoder "),
     script_type: str = typer.Option(None, "--script", help="Script type to use: sh or ps"),
+    language: str = typer.Option(None, "--language", "-l", help="Language for templates and AI content: en, pt-BR"),
     ignore_agent_tools: bool = typer.Option(False, "--ignore-agent-tools", help="Skip checks for AI agent tools like Claude Code"),
     no_git: bool = typer.Option(False, "--no-git", help="Skip git repository initialization"),
     here: bool = typer.Option(False, "--here", help="Initialize project in the current directory instead of creating a new one"),
@@ -1088,8 +1227,22 @@ def init(
         else:
             selected_script = default_script
 
+    # Language selection (T010-T013)
+    if language:
+        if not validate_language_code(language):
+            console.print(f"[red]Error:[/red] Unsupported language: '{language}'. Available: {', '.join(LANGUAGE_CHOICES.keys())}")
+            raise typer.Exit(1)
+        selected_language = language
+    else:
+        # Interactive selection if TTY, otherwise default to English
+        if sys.stdin.isatty():
+            selected_language = select_with_arrows(LANGUAGE_CHOICES, "Choose your language:", "en")
+        else:
+            selected_language = "en"
+
     console.print(f"[cyan]Selected AI assistant:[/cyan] {selected_ai}")
     console.print(f"[cyan]Selected script type:[/cyan] {selected_script}")
+    console.print(f"[cyan]Selected language:[/cyan] {LANGUAGE_CHOICES[selected_language]}")
 
     tracker = StepTracker("Initialize Specify Project")
 
@@ -1101,6 +1254,8 @@ def init(
     tracker.complete("ai-select", f"{selected_ai}")
     tracker.add("script-select", "Select script type")
     tracker.complete("script-select", selected_script)
+    tracker.add("language-select", "Select language")
+    tracker.complete("language-select", LANGUAGE_CHOICES[selected_language])
     for key, label in [
         ("fetch", "Fetch latest release"),
         ("download", "Download template"),
@@ -1125,6 +1280,13 @@ def init(
             local_client = httpx.Client(verify=local_ssl_context)
 
             download_and_extract_template(project_path, selected_ai, selected_script, here, verbose=False, tracker=tracker, client=local_client, debug=debug, github_token=github_token)
+
+            # Write language configuration file (T014)
+            config_dir = project_path / ".specify"
+            config_dir.mkdir(parents=True, exist_ok=True)
+            config_file = config_dir / "config.json"
+            config_data = {"language": selected_language, "version": "1.0"}
+            config_file.write_text(json.dumps(config_data, indent=2))
 
             ensure_executable_scripts(project_path, tracker=tracker)
 
@@ -1164,7 +1326,25 @@ def init(
             pass
 
     console.print(tracker.render())
-    console.print("\n[bold green]Project ready.[/bold green]")
+
+    # Show project summary with language (T015)
+    if selected_language == "pt-BR":
+        console.print("\n[bold green]Projeto pronto.[/bold green]")
+        summary_lines = [
+            f"{'Projeto':<15} [green]{project_path.name}[/green]",
+            f"{'Idioma':<15} [cyan]{LANGUAGE_CHOICES[selected_language]}[/cyan]",
+            f"{'Assistente IA':<15} [cyan]{AGENT_CONFIG[selected_ai]['name']}[/cyan]",
+            f"{'Tipo de Script':<15} [cyan]{SCRIPT_TYPE_CHOICES[selected_script]}[/cyan]",
+        ]
+    else:
+        console.print("\n[bold green]Project ready.[/bold green]")
+        summary_lines = [
+            f"{'Project':<15} [green]{project_path.name}[/green]",
+            f"{'Language':<15} [cyan]{LANGUAGE_CHOICES[selected_language]}[/cyan]",
+            f"{'AI Assistant':<15} [cyan]{AGENT_CONFIG[selected_ai]['name']}[/cyan]",
+            f"{'Script Type':<15} [cyan]{SCRIPT_TYPE_CHOICES[selected_script]}[/cyan]",
+        ]
+    console.print(Panel("\n".join(summary_lines), border_style="green", padding=(1, 2)))
     
     # Show git error details if initialization failed
     if git_error_message:

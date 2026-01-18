@@ -142,6 +142,84 @@ Contributors who consistently submit low-effort AI-generated changes may be rest
 
 Please be respectful to maintainers and disclose AI assistance.
 
+## Adding New Language Translations
+
+Spec Kit supports multiple languages for templates and AI-generated content. To add support for a new language:
+
+### 1. Create Template Directories
+
+Create the language-specific directories following the [BCP 47](https://en.wikipedia.org/wiki/IETF_language_tag) language code format (e.g., `es` for Spanish, `fr` for French, `de` for German, `ja` for Japanese):
+
+```bash
+mkdir -p templates/<language-code>
+mkdir -p templates/constitution/<language-code>
+mkdir -p templates/commands/<language-code>
+```
+
+### 2. Translate Template Files
+
+Copy and translate the following files from `templates/en/`:
+
+- `spec-template.md` - Feature specification template
+- `plan-template.md` - Implementation plan template
+- `tasks-template.md` - Task list template
+- `checklist-template.md` - Checklist template
+- `agent-file-template.md` - Agent context file template
+
+**Important**: Preserve all placeholder tokens exactly as they appear in the English version:
+- `[FEATURE NAME]`, `[DATE]`, `$ARGUMENTS`
+- Task IDs like `T001`, `T002`
+- Markers like `[P]`, `[US1]`, `[US2]`
+- Code blocks and technical paths
+
+### 3. Translate Constitution Template
+
+Copy and translate `templates/constitution/en/constitution.md` to your language directory. Keep placeholder tokens like `[PROJECT_NAME]`, `[PRINCIPLE_1_NAME]`, `[CONSTITUTION_VERSION]` unchanged.
+
+### 4. Create Command Prompts
+
+For each file in `templates/commands/en/`, create a translated version in `templates/commands/<language-code>/`. Each command file should include a **Language Directive** section after the YAML frontmatter:
+
+```markdown
+## Language Directive
+
+**IMPORTANT**: Generate ALL content in [Your Language]. This includes:
+- All specification sections
+- User story descriptions
+- Functional and non-functional requirements
+- Success criteria
+- Error messages and validation
+- Comments and notes
+
+Keep in English only: branch names, task IDs, technical placeholders like `[FEATURE NAME]`, `$ARGUMENTS`, `[DATE]`, and universal technical terms when appropriate.
+```
+
+### 5. Update Language Choices
+
+Add your language to the `LANGUAGE_CHOICES` dictionary in `src/specify_cli/__init__.py`:
+
+```python
+LANGUAGE_CHOICES = {
+    "en": "English (Default)",
+    "pt-BR": "Português (Brasil)",
+    "<your-code>": "<Your Language Name>",
+}
+```
+
+### 6. Test Your Translation
+
+1. Run `specify init test-project --ai claude --language <your-code>`
+2. Verify that `.specify/config.json` contains the correct language
+3. Verify that templates in `.specify/templates/<your-code>/` are properly translated
+4. Test the `/speckit.specify` command to ensure AI generates content in the correct language
+
+### Translation Guidelines
+
+- Use formal/professional tone consistent with technical documentation
+- Keep technical terms that are commonly used in their original English form (e.g., "API", "CLI", "OAuth2")
+- Ensure the translation is natural and idiomatic for native speakers
+- Consider regional variations if applicable (e.g., `pt-BR` for Brazilian Portuguese vs `pt-PT` for European Portuguese)
+
 ## Resources
 
 - [Spec-Driven Development Methodology](./spec-driven.md)

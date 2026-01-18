@@ -75,10 +75,16 @@ function Generate-Commands {
         [string]$OutputDir,
         [string]$ScriptVariant
     )
-    
+
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
-    
-    $templates = Get-ChildItem -Path "templates/commands/*.md" -File -ErrorAction SilentlyContinue
+
+    # Process command templates from both root and English subdirectory (language-specific commands)
+    # Priority: templates/commands/en/*.md (new structure), then templates/commands/*.md (legacy)
+    $templateDir = "templates/commands/en"
+    if (-not (Test-Path $templateDir)) {
+        $templateDir = "templates/commands"
+    }
+    $templates = Get-ChildItem -Path "$templateDir/*.md" -File -ErrorAction SilentlyContinue
     
     foreach ($template in $templates) {
         $name = [System.IO.Path]::GetFileNameWithoutExtension($template.Name)

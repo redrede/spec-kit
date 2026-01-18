@@ -1,3 +1,5 @@
+> 🌐 **Translations:** [Português (Brasil)](./pt-BR/index.md)
+
 # Spec Kit
 
 *Build high-quality software faster.*
