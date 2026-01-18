@@ -1133,21 +1133,35 @@ def init(
         console.print("[red]Error:[/red] Must specify either a project name, use '.' for current directory, or use --here flag")
         raise typer.Exit(1)
 
+    # Determine language early for translated messages
+    early_language = language if language and language in LANGUAGE_CHOICES else "en"
+
     if here:
         project_name = Path.cwd().name
         project_path = Path.cwd()
 
         existing_items = list(project_path.iterdir())
         if existing_items:
-            console.print(f"[yellow]Warning:[/yellow] Current directory is not empty ({len(existing_items)} items)")
-            console.print("[yellow]Template files will be merged with existing content and may overwrite existing files[/yellow]")
-            if force:
-                console.print("[cyan]--force supplied: skipping confirmation and proceeding with merge[/cyan]")
+            if early_language == "pt-BR":
+                console.print(f"[yellow]Aviso:[/yellow] Diretório atual não está vazio ({len(existing_items)} itens)")
+                console.print("[yellow]Arquivos do template serão mesclados com o conteúdo existente e podem sobrescrever arquivos[/yellow]")
+                if force:
+                    console.print("[cyan]--force fornecido: pulando confirmação e prosseguindo com mesclagem[/cyan]")
+                else:
+                    response = typer.confirm("Deseja continuar?")
+                    if not response:
+                        console.print("[yellow]Operação cancelada[/yellow]")
+                        raise typer.Exit(0)
             else:
-                response = typer.confirm("Do you want to continue?")
-                if not response:
-                    console.print("[yellow]Operation cancelled[/yellow]")
-                    raise typer.Exit(0)
+                console.print(f"[yellow]Warning:[/yellow] Current directory is not empty ({len(existing_items)} items)")
+                console.print("[yellow]Template files will be merged with existing content and may overwrite existing files[/yellow]")
+                if force:
+                    console.print("[cyan]--force supplied: skipping confirmation and proceeding with merge[/cyan]")
+                else:
+                    response = typer.confirm("Do you want to continue?")
+                    if not response:
+                        console.print("[yellow]Operation cancelled[/yellow]")
+                        raise typer.Exit(0)
     else:
         project_path = Path(project_name).resolve()
         if project_path.exists():
@@ -1367,56 +1381,106 @@ def init(
     agent_config = AGENT_CONFIG.get(selected_ai)
     if agent_config:
         agent_folder = agent_config["folder"]
-        security_notice = Panel(
-            f"Some agents may store credentials, auth tokens, or other identifying and private artifacts in the agent folder within your project.\n"
-            f"Consider adding [cyan]{agent_folder}[/cyan] (or parts of it) to [cyan].gitignore[/cyan] to prevent accidental credential leakage.",
-            title="[yellow]Agent Folder Security[/yellow]",
-            border_style="yellow",
-            padding=(1, 2)
-        )
+        if selected_language == "pt-BR":
+            security_notice = Panel(
+                f"Alguns agentes podem armazenar credenciais, tokens de autenticação ou outros artefatos privados na pasta do agente dentro do seu projeto.\n"
+                f"Considere adicionar [cyan]{agent_folder}[/cyan] (ou partes dela) ao [cyan].gitignore[/cyan] para evitar vazamento acidental de credenciais.",
+                title="[yellow]Segurança da Pasta do Agente[/yellow]",
+                border_style="yellow",
+                padding=(1, 2)
+            )
+        else:
+            security_notice = Panel(
+                f"Some agents may store credentials, auth tokens, or other identifying and private artifacts in the agent folder within your project.\n"
+                f"Consider adding [cyan]{agent_folder}[/cyan] (or parts of it) to [cyan].gitignore[/cyan] to prevent accidental credential leakage.",
+                title="[yellow]Agent Folder Security[/yellow]",
+                border_style="yellow",
+                padding=(1, 2)
+            )
         console.print()
         console.print(security_notice)
 
     steps_lines = []
-    if not here:
-        steps_lines.append(f"1. Go to the project folder: [cyan]cd {project_name}[/cyan]")
-        step_num = 2
+    if selected_language == "pt-BR":
+        if not here:
+            steps_lines.append(f"1. Vá para a pasta do projeto: [cyan]cd {project_name}[/cyan]")
+            step_num = 2
+        else:
+            steps_lines.append("1. Você já está no diretório do projeto!")
+            step_num = 2
+
+        # Add Codex-specific setup step if needed
+        if selected_ai == "codex":
+            codex_path = project_path / ".codex"
+            quoted_path = shlex.quote(str(codex_path))
+            if os.name == "nt":  # Windows
+                cmd = f"setx CODEX_HOME {quoted_path}"
+            else:  # Unix-like systems
+                cmd = f"export CODEX_HOME={quoted_path}"
+
+            steps_lines.append(f"{step_num}. Defina a variável de ambiente [cyan]CODEX_HOME[/cyan] antes de executar o Codex: [cyan]{cmd}[/cyan]")
+            step_num += 1
+
+        steps_lines.append(f"{step_num}. Comece a usar os slash commands com seu agente de IA:")
+
+        steps_lines.append("   2.1 [cyan]/speckit.constitution[/] - Estabelecer princípios do projeto")
+        steps_lines.append("   2.2 [cyan]/speckit.specify[/] - Criar especificação base")
+        steps_lines.append("   2.3 [cyan]/speckit.plan[/] - Criar plano de implementação")
+        steps_lines.append("   2.4 [cyan]/speckit.tasks[/] - Gerar tarefas acionáveis")
+        steps_lines.append("   2.5 [cyan]/speckit.implement[/] - Executar implementação")
+
+        steps_panel = Panel("\n".join(steps_lines), title="Próximos Passos", border_style="cyan", padding=(1,2))
     else:
-        steps_lines.append("1. You're already in the project directory!")
-        step_num = 2
+        if not here:
+            steps_lines.append(f"1. Go to the project folder: [cyan]cd {project_name}[/cyan]")
+            step_num = 2
+        else:
+            steps_lines.append("1. You're already in the project directory!")
+            step_num = 2
 
-    # Add Codex-specific setup step if needed
-    if selected_ai == "codex":
-        codex_path = project_path / ".codex"
-        quoted_path = shlex.quote(str(codex_path))
-        if os.name == "nt":  # Windows
-            cmd = f"setx CODEX_HOME {quoted_path}"
-        else:  # Unix-like systems
-            cmd = f"export CODEX_HOME={quoted_path}"
-        
-        steps_lines.append(f"{step_num}. Set [cyan]CODEX_HOME[/cyan] environment variable before running Codex: [cyan]{cmd}[/cyan]")
-        step_num += 1
+        # Add Codex-specific setup step if needed
+        if selected_ai == "codex":
+            codex_path = project_path / ".codex"
+            quoted_path = shlex.quote(str(codex_path))
+            if os.name == "nt":  # Windows
+                cmd = f"setx CODEX_HOME {quoted_path}"
+            else:  # Unix-like systems
+                cmd = f"export CODEX_HOME={quoted_path}"
 
-    steps_lines.append(f"{step_num}. Start using slash commands with your AI agent:")
+            steps_lines.append(f"{step_num}. Set [cyan]CODEX_HOME[/cyan] environment variable before running Codex: [cyan]{cmd}[/cyan]")
+            step_num += 1
 
-    steps_lines.append("   2.1 [cyan]/speckit.constitution[/] - Establish project principles")
-    steps_lines.append("   2.2 [cyan]/speckit.specify[/] - Create baseline specification")
-    steps_lines.append("   2.3 [cyan]/speckit.plan[/] - Create implementation plan")
-    steps_lines.append("   2.4 [cyan]/speckit.tasks[/] - Generate actionable tasks")
-    steps_lines.append("   2.5 [cyan]/speckit.implement[/] - Execute implementation")
+        steps_lines.append(f"{step_num}. Start using slash commands with your AI agent:")
 
-    steps_panel = Panel("\n".join(steps_lines), title="Next Steps", border_style="cyan", padding=(1,2))
+        steps_lines.append("   2.1 [cyan]/speckit.constitution[/] - Establish project principles")
+        steps_lines.append("   2.2 [cyan]/speckit.specify[/] - Create baseline specification")
+        steps_lines.append("   2.3 [cyan]/speckit.plan[/] - Create implementation plan")
+        steps_lines.append("   2.4 [cyan]/speckit.tasks[/] - Generate actionable tasks")
+        steps_lines.append("   2.5 [cyan]/speckit.implement[/] - Execute implementation")
+
+        steps_panel = Panel("\n".join(steps_lines), title="Next Steps", border_style="cyan", padding=(1,2))
+
     console.print()
     console.print(steps_panel)
 
-    enhancement_lines = [
-        "Optional commands that you can use for your specs [bright_black](improve quality & confidence)[/bright_black]",
-        "",
-        f"○ [cyan]/speckit.clarify[/] [bright_black](optional)[/bright_black] - Ask structured questions to de-risk ambiguous areas before planning (run before [cyan]/speckit.plan[/] if used)",
-        f"○ [cyan]/speckit.analyze[/] [bright_black](optional)[/bright_black] - Cross-artifact consistency & alignment report (after [cyan]/speckit.tasks[/], before [cyan]/speckit.implement[/])",
-        f"○ [cyan]/speckit.checklist[/] [bright_black](optional)[/bright_black] - Generate quality checklists to validate requirements completeness, clarity, and consistency (after [cyan]/speckit.plan[/])"
-    ]
-    enhancements_panel = Panel("\n".join(enhancement_lines), title="Enhancement Commands", border_style="cyan", padding=(1,2))
+    if selected_language == "pt-BR":
+        enhancement_lines = [
+            "Comandos opcionais para suas especificações [bright_black](melhorar qualidade e confiança)[/bright_black]",
+            "",
+            f"○ [cyan]/speckit.clarify[/] [bright_black](opcional)[/bright_black] - Fazer perguntas estruturadas para reduzir riscos de áreas ambíguas antes do planejamento (executar antes de [cyan]/speckit.plan[/] se usado)",
+            f"○ [cyan]/speckit.analyze[/] [bright_black](opcional)[/bright_black] - Relatório de consistência e alinhamento entre artefatos (após [cyan]/speckit.tasks[/], antes de [cyan]/speckit.implement[/])",
+            f"○ [cyan]/speckit.checklist[/] [bright_black](opcional)[/bright_black] - Gerar checklists de qualidade para validar completude, clareza e consistência dos requisitos (após [cyan]/speckit.plan[/])"
+        ]
+        enhancements_panel = Panel("\n".join(enhancement_lines), title="Comandos de Aprimoramento", border_style="cyan", padding=(1,2))
+    else:
+        enhancement_lines = [
+            "Optional commands that you can use for your specs [bright_black](improve quality & confidence)[/bright_black]",
+            "",
+            f"○ [cyan]/speckit.clarify[/] [bright_black](optional)[/bright_black] - Ask structured questions to de-risk ambiguous areas before planning (run before [cyan]/speckit.plan[/] if used)",
+            f"○ [cyan]/speckit.analyze[/] [bright_black](optional)[/bright_black] - Cross-artifact consistency & alignment report (after [cyan]/speckit.tasks[/], before [cyan]/speckit.implement[/])",
+            f"○ [cyan]/speckit.checklist[/] [bright_black](optional)[/bright_black] - Generate quality checklists to validate requirements completeness, clarity, and consistency (after [cyan]/speckit.plan[/])"
+        ]
+        enhancements_panel = Panel("\n".join(enhancement_lines), title="Enhancement Commands", border_style="cyan", padding=(1,2))
     console.print()
     console.print(enhancements_panel)
 
