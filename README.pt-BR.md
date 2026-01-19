@@ -53,7 +53,7 @@ Escolha seu método de instalação preferido:
 Instale uma vez e use em qualquer lugar:
 
 ```bash
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+uv tool install specify-cli --from git+https://github.com/redrede/spec-kit.git
 ```
 
 Depois use a ferramenta diretamente:
@@ -74,7 +74,7 @@ specify check
 Para atualizar o Specify, consulte o [Guia de Atualização](./docs/pt-BR/upgrade.md) para instruções detalhadas. Atualização rápida:
 
 ```bash
-uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git
+uv tool install specify-cli --force --from git+https://github.com/redrede/spec-kit.git
 ```
 
 #### Opção 2: Uso Único
