@@ -182,6 +182,7 @@ O comando `specify` suporta as seguintes opções:
 | ---------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `<project-name>`       | Argumento | Nome para o novo diretório do projeto (opcional se usar `--here`, ou use `.` para o diretório atual)                                                                  |
 | `--ai`                 | Opção     | Assistente de IA a usar: `claude`, `gemini`, `copilot`, `cursor-agent`, `qwen`, `opencode`, `codex`, `windsurf`, `kilocode`, `auggie`, `roo`, `codebuddy`, `amp`, `shai`, `q`, `bob`, ou `qoder` |
+| `--language`, `-l`     | Opção     | Idioma para templates e saída da CLI: `en` (Inglês, padrão) ou `pt-BR` (Português do Brasil)                                                                         |
 | `--script`             | Opção     | Variante de script a usar: `sh` (bash/zsh) ou `ps` (PowerShell)                                                                                                      |
 | `--ignore-agent-tools` | Flag      | Pular verificações de ferramentas de agentes de IA como Claude Code                                                                                                   |
 | `--no-git`             | Flag      | Pular inicialização do repositório git                                                                                                                                |
@@ -239,6 +240,11 @@ specify init meu-projeto --ai claude --debug
 
 # Usar token do GitHub para requisições de API (útil para ambientes corporativos)
 specify init meu-projeto --ai claude --github-token ghp_seu_token_aqui
+
+# Inicializar com idioma Português do Brasil
+specify init meu-projeto --ai claude --language pt-BR
+# ou use a forma abreviada
+specify init meu-projeto --ai claude -l pt-BR
 
 # Verificar requisitos do sistema
 specify check
