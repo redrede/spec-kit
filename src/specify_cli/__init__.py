@@ -1080,6 +1080,74 @@ def ensure_executable_scripts(project_path: Path, tracker: StepTracker | None = 
             for f in failures:
                 console.print(f"  - {f}")
 
+
+def apply_language_commands(
+    project_path: Path,
+    language: str,
+    agent: str,
+    tracker: StepTracker | None = None
+) -> None:
+    """
+    Copy language-specific pre-processed command files to agent command directory.
+
+    Args:
+        project_path: Project root directory
+        language: Target language code (e.g., "pt-BR", "en")
+        agent: AI assistant identifier (e.g., "claude", "gemini")
+        tracker: Optional progress tracker
+    """
+    if language == "en":
+        # English is already the default, no swap needed
+        if tracker:
+            tracker.skip("lang-swap", "en is default")
+        return
+
+    agent_config = AGENT_CONFIG.get(agent)
+    if not agent_config:
+        if tracker:
+            tracker.skip("lang-swap", f"unknown agent {agent}")
+        return
+
+    # Source: .specify/commands/{language}/
+    source_dir = project_path / ".specify" / "commands" / language
+    if not source_dir.is_dir():
+        if tracker:
+            tracker.skip("lang-swap", f"{language} commands not available")
+        return
+
+    # Target: agent command directory (e.g., .claude/commands/)
+    agent_folder = agent_config["folder"].lstrip("/")
+    # Handle different agent folder structures
+    if agent == "copilot":
+        target_dir = project_path / agent_folder / "agents"
+    elif agent == "opencode":
+        target_dir = project_path / agent_folder / "command"
+    elif agent in ("windsurf", "kilocode"):
+        target_dir = project_path / agent_folder / "workflows"
+    elif agent in ("codex", "q"):
+        target_dir = project_path / agent_folder / "prompts"
+    else:
+        target_dir = project_path / agent_folder / "commands"
+
+    if not target_dir.is_dir():
+        if tracker:
+            tracker.skip("lang-swap", f"target dir not found")
+        return
+
+    # Copy each command file from language source to agent target
+    swapped = 0
+    for source_file in source_dir.glob("speckit.*"):
+        target_file = target_dir / source_file.name
+        if target_file.exists():
+            shutil.copy2(source_file, target_file)
+            swapped += 1
+
+    if tracker:
+        if swapped > 0:
+            tracker.complete("lang-swap", f"{swapped} commands -> {language}")
+        else:
+            tracker.skip("lang-swap", "no commands to swap")
+
 @app.command()
 def init(
     project_name: str = typer.Argument(None, help="Name for your new project directory (optional if using --here, or use '.' for current directory)"),
@@ -1277,6 +1345,7 @@ def init(
         ("zip-list", "Archive contents"),
         ("extracted-summary", "Extraction summary"),
         ("chmod", "Ensure scripts executable"),
+        ("lang-swap", "Apply language commands"),
         ("cleanup", "Cleanup"),
         ("git", "Initialize git repository"),
         ("final", "Finalize")
@@ -1303,6 +1372,9 @@ def init(
             config_file.write_text(json.dumps(config_data, indent=2))
 
             ensure_executable_scripts(project_path, tracker=tracker)
+
+            # Apply language-specific command files
+            apply_language_commands(project_path, selected_language, selected_ai, tracker=tracker)
 
             if not no_git:
                 tracker.start("git")

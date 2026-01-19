@@ -38,13 +38,13 @@ rewrite_paths() {
 }
 
 generate_commands() {
-  local agent=$1 ext=$2 arg_format=$3 output_dir=$4 script_variant=$5
+  local agent=$1 ext=$2 arg_format=$3 output_dir=$4 script_variant=$5 language=${6:-en}
   mkdir -p "$output_dir"
-  # Process command templates from both root and English subdirectory (language-specific commands)
-  # Priority: templates/commands/en/*.md (new structure), then templates/commands/*.md (legacy)
-  local template_dir="templates/commands/en"
+  # Process command templates from language-specific subdirectory
+  # Use specified language directory with fallback to English
+  local template_dir="templates/commands/$language"
   if [[ ! -d "$template_dir" ]]; then
-    template_dir="templates/commands"
+    template_dir="templates/commands/en"  # Fallback to English
   fi
   for template in "$template_dir"/*.md; do
     [[ -f "$template" ]] || continue
@@ -166,14 +166,29 @@ build_variant() {
   case $agent in
     claude)
       mkdir -p "$base_dir/.claude/commands"
-      generate_commands claude md "\$ARGUMENTS" "$base_dir/.claude/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      # Generate default (en) to agent command folder
+      generate_commands claude md "\$ARGUMENTS" "$base_dir/.claude/commands" "$script" "en"
+      # Generate all languages to .specify/commands/ for later swapping
+      generate_commands claude md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands claude md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     gemini)
       mkdir -p "$base_dir/.gemini/commands"
-      generate_commands gemini toml "{{args}}" "$base_dir/.gemini/commands" "$script"
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands gemini toml "{{args}}" "$base_dir/.gemini/commands" "$script" "en"
+      generate_commands gemini toml "{{args}}" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands gemini toml "{{args}}" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
       [[ -f agent_templates/gemini/GEMINI.md ]] && cp agent_templates/gemini/GEMINI.md "$base_dir/GEMINI.md" ;;
     copilot)
       mkdir -p "$base_dir/.github/agents"
-      generate_commands copilot agent.md "\$ARGUMENTS" "$base_dir/.github/agents" "$script"
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands copilot agent.md "\$ARGUMENTS" "$base_dir/.github/agents" "$script" "en"
+      generate_commands copilot agent.md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands copilot agent.md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
       # Generate companion prompt files
       generate_copilot_prompts "$base_dir/.github/agents" "$base_dir/.github/prompts"
       # Create VS Code workspace settings
@@ -182,47 +197,116 @@ build_variant() {
       ;;
     cursor-agent)
       mkdir -p "$base_dir/.cursor/commands"
-      generate_commands cursor-agent md "\$ARGUMENTS" "$base_dir/.cursor/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands cursor-agent md "\$ARGUMENTS" "$base_dir/.cursor/commands" "$script" "en"
+      generate_commands cursor-agent md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands cursor-agent md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     qwen)
       mkdir -p "$base_dir/.qwen/commands"
-      generate_commands qwen toml "{{args}}" "$base_dir/.qwen/commands" "$script"
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands qwen toml "{{args}}" "$base_dir/.qwen/commands" "$script" "en"
+      generate_commands qwen toml "{{args}}" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands qwen toml "{{args}}" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
       [[ -f agent_templates/qwen/QWEN.md ]] && cp agent_templates/qwen/QWEN.md "$base_dir/QWEN.md" ;;
     opencode)
       mkdir -p "$base_dir/.opencode/command"
-      generate_commands opencode md "\$ARGUMENTS" "$base_dir/.opencode/command" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands opencode md "\$ARGUMENTS" "$base_dir/.opencode/command" "$script" "en"
+      generate_commands opencode md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands opencode md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     windsurf)
       mkdir -p "$base_dir/.windsurf/workflows"
-      generate_commands windsurf md "\$ARGUMENTS" "$base_dir/.windsurf/workflows" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands windsurf md "\$ARGUMENTS" "$base_dir/.windsurf/workflows" "$script" "en"
+      generate_commands windsurf md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands windsurf md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     codex)
       mkdir -p "$base_dir/.codex/prompts"
-      generate_commands codex md "\$ARGUMENTS" "$base_dir/.codex/prompts" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands codex md "\$ARGUMENTS" "$base_dir/.codex/prompts" "$script" "en"
+      generate_commands codex md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands codex md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     kilocode)
       mkdir -p "$base_dir/.kilocode/workflows"
-      generate_commands kilocode md "\$ARGUMENTS" "$base_dir/.kilocode/workflows" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands kilocode md "\$ARGUMENTS" "$base_dir/.kilocode/workflows" "$script" "en"
+      generate_commands kilocode md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands kilocode md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     auggie)
       mkdir -p "$base_dir/.augment/commands"
-      generate_commands auggie md "\$ARGUMENTS" "$base_dir/.augment/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands auggie md "\$ARGUMENTS" "$base_dir/.augment/commands" "$script" "en"
+      generate_commands auggie md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands auggie md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     roo)
       mkdir -p "$base_dir/.roo/commands"
-      generate_commands roo md "\$ARGUMENTS" "$base_dir/.roo/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands roo md "\$ARGUMENTS" "$base_dir/.roo/commands" "$script" "en"
+      generate_commands roo md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands roo md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     codebuddy)
       mkdir -p "$base_dir/.codebuddy/commands"
-      generate_commands codebuddy md "\$ARGUMENTS" "$base_dir/.codebuddy/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands codebuddy md "\$ARGUMENTS" "$base_dir/.codebuddy/commands" "$script" "en"
+      generate_commands codebuddy md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands codebuddy md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     qoder)
       mkdir -p "$base_dir/.qoder/commands"
-      generate_commands qoder md "\$ARGUMENTS" "$base_dir/.qoder/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands qoder md "\$ARGUMENTS" "$base_dir/.qoder/commands" "$script" "en"
+      generate_commands qoder md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands qoder md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     amp)
       mkdir -p "$base_dir/.agents/commands"
-      generate_commands amp md "\$ARGUMENTS" "$base_dir/.agents/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands amp md "\$ARGUMENTS" "$base_dir/.agents/commands" "$script" "en"
+      generate_commands amp md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands amp md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     shai)
       mkdir -p "$base_dir/.shai/commands"
-      generate_commands shai md "\$ARGUMENTS" "$base_dir/.shai/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands shai md "\$ARGUMENTS" "$base_dir/.shai/commands" "$script" "en"
+      generate_commands shai md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands shai md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     q)
       mkdir -p "$base_dir/.amazonq/prompts"
-      generate_commands q md "\$ARGUMENTS" "$base_dir/.amazonq/prompts" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands q md "\$ARGUMENTS" "$base_dir/.amazonq/prompts" "$script" "en"
+      generate_commands q md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands q md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
     bob)
       mkdir -p "$base_dir/.bob/commands"
-      generate_commands bob md "\$ARGUMENTS" "$base_dir/.bob/commands" "$script" ;;
+      mkdir -p "$base_dir/.specify/commands/en"
+      mkdir -p "$base_dir/.specify/commands/pt-BR"
+      generate_commands bob md "\$ARGUMENTS" "$base_dir/.bob/commands" "$script" "en"
+      generate_commands bob md "\$ARGUMENTS" "$base_dir/.specify/commands/en" "$script" "en"
+      generate_commands bob md "\$ARGUMENTS" "$base_dir/.specify/commands/pt-BR" "$script" "pt-BR"
+      ;;
   esac
   ( cd "$base_dir" && zip -r "../spec-kit-template-${agent}-${script}-${NEW_VERSION}.zip" . )
   echo "Created $GENRELEASES_DIR/spec-kit-template-${agent}-${script}-${NEW_VERSION}.zip"

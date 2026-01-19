@@ -73,16 +73,17 @@ function Generate-Commands {
         [string]$Extension,
         [string]$ArgFormat,
         [string]$OutputDir,
-        [string]$ScriptVariant
+        [string]$ScriptVariant,
+        [string]$Language = "en"
     )
 
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 
-    # Process command templates from both root and English subdirectory (language-specific commands)
-    # Priority: templates/commands/en/*.md (new structure), then templates/commands/*.md (legacy)
-    $templateDir = "templates/commands/en"
+    # Process command templates from language-specific subdirectory
+    # Use specified language directory with fallback to English
+    $templateDir = "templates/commands/$Language"
     if (-not (Test-Path $templateDir)) {
-        $templateDir = "templates/commands"
+        $templateDir = "templates/commands/en"  # Fallback to English
     }
     $templates = Get-ChildItem -Path "$templateDir/*.md" -File -ErrorAction SilentlyContinue
     
@@ -274,23 +275,41 @@ function Build-Variant {
     switch ($Agent) {
         'claude' {
             $cmdDir = Join-Path $baseDir ".claude/commands"
-            Generate-Commands -Agent 'claude' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'claude' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'claude' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'claude' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'gemini' {
             $cmdDir = Join-Path $baseDir ".gemini/commands"
-            Generate-Commands -Agent 'gemini' -Extension 'toml' -ArgFormat '{{args}}' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'gemini' -Extension 'toml' -ArgFormat '{{args}}' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'gemini' -Extension 'toml' -ArgFormat '{{args}}' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'gemini' -Extension 'toml' -ArgFormat '{{args}}' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
             if (Test-Path "agent_templates/gemini/GEMINI.md") {
                 Copy-Item -Path "agent_templates/gemini/GEMINI.md" -Destination (Join-Path $baseDir "GEMINI.md")
             }
         }
         'copilot' {
             $agentsDir = Join-Path $baseDir ".github/agents"
-            Generate-Commands -Agent 'copilot' -Extension 'agent.md' -ArgFormat '$ARGUMENTS' -OutputDir $agentsDir -ScriptVariant $Script
-            
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'copilot' -Extension 'agent.md' -ArgFormat '$ARGUMENTS' -OutputDir $agentsDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'copilot' -Extension 'agent.md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'copilot' -Extension 'agent.md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
+
             # Generate companion prompt files
             $promptsDir = Join-Path $baseDir ".github/prompts"
             Generate-CopilotPrompts -AgentsDir $agentsDir -PromptsDir $promptsDir
-            
+
             # Create VS Code workspace settings
             $vscodeDir = Join-Path $baseDir ".vscode"
             New-Item -ItemType Directory -Path $vscodeDir -Force | Out-Null
@@ -300,58 +319,136 @@ function Build-Variant {
         }
         'cursor-agent' {
             $cmdDir = Join-Path $baseDir ".cursor/commands"
-            Generate-Commands -Agent 'cursor-agent' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'cursor-agent' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'cursor-agent' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'cursor-agent' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'qwen' {
             $cmdDir = Join-Path $baseDir ".qwen/commands"
-            Generate-Commands -Agent 'qwen' -Extension 'toml' -ArgFormat '{{args}}' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'qwen' -Extension 'toml' -ArgFormat '{{args}}' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'qwen' -Extension 'toml' -ArgFormat '{{args}}' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'qwen' -Extension 'toml' -ArgFormat '{{args}}' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
             if (Test-Path "agent_templates/qwen/QWEN.md") {
                 Copy-Item -Path "agent_templates/qwen/QWEN.md" -Destination (Join-Path $baseDir "QWEN.md")
             }
         }
         'opencode' {
             $cmdDir = Join-Path $baseDir ".opencode/command"
-            Generate-Commands -Agent 'opencode' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'opencode' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'opencode' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'opencode' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'windsurf' {
             $cmdDir = Join-Path $baseDir ".windsurf/workflows"
-            Generate-Commands -Agent 'windsurf' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'windsurf' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'windsurf' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'windsurf' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'codex' {
             $cmdDir = Join-Path $baseDir ".codex/prompts"
-            Generate-Commands -Agent 'codex' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'codex' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'codex' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'codex' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'kilocode' {
             $cmdDir = Join-Path $baseDir ".kilocode/workflows"
-            Generate-Commands -Agent 'kilocode' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'kilocode' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'kilocode' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'kilocode' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'auggie' {
             $cmdDir = Join-Path $baseDir ".augment/commands"
-            Generate-Commands -Agent 'auggie' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'auggie' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'auggie' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'auggie' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'roo' {
             $cmdDir = Join-Path $baseDir ".roo/commands"
-            Generate-Commands -Agent 'roo' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'roo' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'roo' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'roo' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'codebuddy' {
             $cmdDir = Join-Path $baseDir ".codebuddy/commands"
-            Generate-Commands -Agent 'codebuddy' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'codebuddy' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'codebuddy' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'codebuddy' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'amp' {
             $cmdDir = Join-Path $baseDir ".agents/commands"
-            Generate-Commands -Agent 'amp' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'amp' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'amp' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'amp' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'q' {
             $cmdDir = Join-Path $baseDir ".amazonq/prompts"
-            Generate-Commands -Agent 'q' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'q' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'q' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'q' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'bob' {
             $cmdDir = Join-Path $baseDir ".bob/commands"
-            Generate-Commands -Agent 'bob' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'bob' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'bob' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'bob' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
         'qoder' {
             $cmdDir = Join-Path $baseDir ".qoder/commands"
-            Generate-Commands -Agent 'qoder' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script
+            $enDir = Join-Path $baseDir ".specify/commands/en"
+            $ptBRDir = Join-Path $baseDir ".specify/commands/pt-BR"
+            New-Item -ItemType Directory -Path $enDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $ptBRDir -Force | Out-Null
+            Generate-Commands -Agent 'qoder' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $cmdDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'qoder' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $enDir -ScriptVariant $Script -Language 'en'
+            Generate-Commands -Agent 'qoder' -Extension 'md' -ArgFormat '$ARGUMENTS' -OutputDir $ptBRDir -ScriptVariant $Script -Language 'pt-BR'
         }
     }
     
