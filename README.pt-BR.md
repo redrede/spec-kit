@@ -82,7 +82,7 @@ uv tool install specify-cli --force --from git+https://github.com/redrede/spec-k
 Execute diretamente sem instalar:
 
 ```bash
-uvx --from git+https://github.com/github/spec-kit.git specify init <NOME_DO_PROJETO>
+uvx --from git+https://github.com/redrede/spec-kit.git specify init <NOME_DO_PROJETO>
 ```
 
 **Benefícios da instalação persistente:**
